@@ -164,3 +164,6 @@ cython_debug/
 
 # data_files
 data/*
+
+# draft files
+test_draft*.py

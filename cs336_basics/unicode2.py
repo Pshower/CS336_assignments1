@@ -44,4 +44,4 @@ print([b for b in error_encode])
 for i in range(256):
     for j in range(256):
         print(f"[{i}, {j}]: {bytes([i, j]).decode('utf-8')}")
-[0, 128]
+# [0, 128]
