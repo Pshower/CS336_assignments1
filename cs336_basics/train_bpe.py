@@ -1,3 +1,7 @@
+from io import BytesIO
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.resolve()))
 import regex as re
 from collections import defaultdict, Counter
 from multiprocess import Pool
@@ -7,13 +11,12 @@ from pretokenization_example import find_chunk_boundaries
 
 NUM_THREAD = 16
 
-def process_chunk(args: tuple[str, int, int, list[str]]) -> list[list[bytes]]:
+def process_chunk(args: tuple[BytesIO, int, int, list[str]]) -> list[list[bytes]]:
     
-    input_path, start, end, special_tokens = args
+    input_file, start, end, special_tokens = args
 
-    with open(input_path, "rb") as file:
-        file.seek(start)
-        chunk = file.read(end - start).decode("utf-8", errors="ignore")
+    input_file.seek(start)
+    chunk = input_file.read(end - start).decode("utf-8", errors="ignore")
 
     # 1 对special_tokens转义并且用|连接，然后对字段分词获得文档
     pattern = "|".join(re.escape(token) for token in special_tokens)
@@ -44,6 +47,7 @@ def count_pairs(args: tuple[dict[int, bytes], list[list[bytes]]]) -> dict[int, i
             pair = (tokens[i], tokens[i+1])
             counts[pair] += 1
     return counts
+
 
 def apply_merge_to_chunk(args: tuple[tuple[bytes], list[list[bytes]]]) -> list[list[bytes]]:
     """
@@ -81,9 +85,14 @@ def train_bpe(input_path: str,
         voc_lib[len(voc_lib)] = sp_token.encode("utf-8")
 
     # 2 预分词并设置并行
-    with open(input_path, "rb") as input_files:
-        boundaries = find_chunk_boundaries(input_files, NUM_THREAD, bytes(special_tokens[0].encode("utf-8")))
-    task_args = [(input_path, start, end, special_tokens) for start, end in zip(boundaries[:-1], boundaries[1:])]
+    # 先将文件内容读入内存，避免跨进程传递文件句柄问题
+    with open(input_path, "rb") as f:
+        file_content = f.read()
+    
+    input_file = BytesIO(file_content)
+    boundaries = find_chunk_boundaries(input_file, NUM_THREAD, bytes(special_tokens[0].encode("utf-8")))
+    task_args = [(BytesIO(file_content), start, end, special_tokens) for start, end in zip(boundaries[:-1], boundaries[1:])]
+    
     with Pool(processes=NUM_THREAD) as pool:
         chunk_results = pool.map(process_chunk, task_args)
 
@@ -110,7 +119,7 @@ def train_bpe(input_path: str,
         best_pairs = max(counts.items(), key=lambda item: (item[1], item[0]))[0]
 
         # 3.3 合并结果：更新词表和merges
-        print(f"test_best_pairs====> {best_pairs}")
+        # print(f"test_best_pairs====> {best_pairs}")
         b1, b2 = best_pairs
         new_token = b1 + b2
         voc_lib[len(voc_lib)] = new_token
@@ -128,8 +137,21 @@ def train_bpe(input_path: str,
 if __name__ == "__main__":
     GPT2_SPLIT_PATTERN = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
     input_path = "data/TinyStoriesV2-GPT4-test.txt"
-    vocab_size = 256
+    vocab_size = 500
     special_tokens = ["<|endoftext|>"]
+
+    vocab, merges = train_bpe(input_path, vocab_size, special_tokens)
+
+    # 保存测试结果
+    # 写入词汇表 vocab_test.tsv (格式: id\tbytes_repr)
+    with open("data/vocab_test.tsv", "w+", encoding="utf-8") as f:
+        lines = [f"{idx}\t{token_bytes!r}\n" for idx, token_bytes in vocab.items()]
+        f.writelines(lines)
+
+    # 写入合并规则 merges_test.txt (格式: bytes_repr1\tbytes_repr2\n)
+    with open("data/merges_test.txt", "w+", encoding="utf-8") as f:
+        lines = [f"{a!r}\t{b!r}\n" for a, b in merges]
+        f.writelines(lines)
 
     
 
