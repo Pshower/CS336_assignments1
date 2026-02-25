@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import json
 import os
-import resource
 import sys
+import platform
 
 import psutil
 import pytest
 import tiktoken
+
+# resource module is Unix-only, skip on Windows
+if platform.system() != 'Windows':
+    import resource
+else:
+    resource = None
 
 from .adapters import get_tokenizer
 from .common import FIXTURES_PATH, gpt2_bytes_to_unicode
@@ -19,18 +25,21 @@ MERGES_PATH = FIXTURES_PATH / "gpt2_merges.txt"
 def memory_limit(max_mem):
     def decorator(f):
         def wrapper(*args, **kwargs):
-            process = psutil.Process(os.getpid())
-            prev_limits = resource.getrlimit(resource.RLIMIT_AS)
-            resource.setrlimit(resource.RLIMIT_AS, (process.memory_info().rss + max_mem, -1))
-            try:
-                result = f(*args, **kwargs)
-                return result
-            finally:
-                # Even if the function above fails (e.g., it exceeds the
-                # memory limit), reset the memory limit back to the
-                # previous limit so other tests aren't affected.
-                resource.setrlimit(resource.RLIMIT_AS, prev_limits)
-
+            if platform.system() != 'Windows' and resource is not None:
+                process = psutil.Process(os.getpid())
+                prev_limits = resource.getrlimit(resource.RLIMIT_AS)
+                resource.setrlimit(resource.RLIMIT_AS, (process.memory_info().rss + max_mem, -1))
+                try:
+                    result = f(*args, **kwargs)
+                    return result
+                finally:
+                    # Even if the function above fails (e.g., it exceeds the
+                    # memory limit), reset the memory limit back to the
+                    # previous limit so other tests aren't affected.
+                    resource.setrlimit(resource.RLIMIT_AS, prev_limits)
+            else:
+                # Skip memory limit on Windows
+                return f(*args, **kwargs)
         return wrapper
 
     return decorator

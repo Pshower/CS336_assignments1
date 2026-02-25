@@ -11,8 +11,10 @@ def get_test_txt(input_txt : str,
 
 if __name__ == "__main__":
 
-    input_file = "data/TinyStoriesV2-GPT4-train.txt"
+    # input_file = "data/TinyStoriesV2-GPT4-train.txt"
+    input_file = "data/owt_train.txt"
 
-    output_file = "data/TinyStoriesV2-GPT4-test.txt"
+    # output_file = "data/TinyStoriesV2-GPT4-test.txt"
+    output_file = "data/owt_train_test.txt"
 
     get_test_txt(input_file, output_file, 5000)

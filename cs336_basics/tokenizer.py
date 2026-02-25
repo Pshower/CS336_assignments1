@@ -1,4 +1,5 @@
 import ast
+import time
 from io import BytesIO
 from typing import Iterable
 from multiprocess import Pool
@@ -38,7 +39,6 @@ class Tokenizer:
 
         return cls(vocab=vocab, merges=merges, special_tokens=special_tokens)
 
-
     def apply_merge_to_chunk(self, chunk: list[list[bytes]]) -> list[int]:
         tokens_id = []
         for tokens in chunk:
@@ -64,7 +64,6 @@ class Tokenizer:
                 tokens_id.append(self.vocab_reverse.get(token))
             # print(f"tokens_id==>{tokens_id}")
         return tokens_id
-
 
     def encode(self, text: str) -> list[int]:
         # 预分词并设置并行
@@ -109,8 +108,38 @@ class Tokenizer:
 
 if __name__ == "__main__":
 
+    # self test
+
     special_tokens = ["<|endoftext|>"]
     tokk = Tokenizer.from_files("data/vocab_test.tsv", "data/merges_test.txt", special_tokens)
     print(tokk.encode(" said"))
     print(tokk.decode([486, 258]))
 
+    # experiments (a)
+    start_time_a_ts = time.time()
+    input_path = "data/TinyStoriesV2-GPT4-test.txt"
+    with open(input_path, "r", encoding="utf-8") as f:
+        test_txt = f.read()
+    print(f"TinyStoriesV2 comprehension rate: {len(test_txt) / len(tokk.encode(test_txt)):.4f}")
+    end_time_a_ts = time.time()
+
+    tokk_owt = Tokenizer.from_files("data/vocab_owt_test.tsv", "data/merges_owt_test.txt", special_tokens)
+    input_path_owt = "data/owt_train_test.txt"
+    with open(input_path_owt, "r", encoding="utf-8") as f:
+        test_txt_owt = f.read()
+    print(f"owt comprehension rate: {len(test_txt_owt) / len(tokk_owt.encode(test_txt_owt)):.4f}")
+
+    # experiments (b)
+    print(f"TinyStoriesV2 on owt tokenizer comprehension rate: {len(test_txt) / len(tokk_owt.encode(test_txt)):.4f}")
+    print(f"owt on TinyStoriesV2 tokenizer comprehension rate: {len(test_txt_owt) / len(tokk.encode(test_txt_owt)):.4f}")
+    # 压缩效率会变差，因为部分常见组合没有经过训练，无法被压缩成一个token
+
+    # experiments (c)
+    print(f"token_time: {(end_time_a_ts - start_time_a_ts):.4f}s\n"
+          f"speed: {5000 / (end_time_a_ts - start_time_a_ts):.4f}bytes/s\n"
+          f"time for 825 gb: {825 * 1000 * 1000 * 1000 / 5000 * (end_time_a_ts - start_time_a_ts) / 3600:.4f}h")
+    
+    # experiments (d)
+    # 首先id不需要负数，选择无符号整型
+    # 其次词汇表一般65536就够用（16位）
+    # unit16比32节省空间
