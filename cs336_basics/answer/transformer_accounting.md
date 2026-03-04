@@ -22,19 +22,20 @@ SwiGLU: 6 * d_ff * d_model * context_length
 RoPE: 0
 MultiheadSelfAttention: 3 * 2 * context_length * d_model * d_model + 4 * context_length * context_length * d_model + 2 * context_length * d_model * d_model = 8 * context_length * d_model * d_model + 4 * context_length * context_length * d_model
 PreNormTransformerBlock: 8 * context_length * d_model * d_model + 4 * context_length * context_length * d_model + 6 * d_ff * d_model * context_length
-TransformerLM: 2 * context_length * d_model * context_length + num_layers * (8 * context_length * d_model * d_model + 4 * context_length * context_length * d_model + 6 * d_ff * d_model * context_length) = 4,352,009,830,400
+lm_head: 2 * context_length * d_model * vocab_size
+TransformerLM: 2 * context_length * d_model * vocab_size + num_layers * (8 * context_length * d_model * d_model + 4 * context_length * context_length * d_model + 6 * d_ff * d_model * context_length) = 4,513,336,524,800
 
 3. most
 SwiGLU
 
 4. small large
-460,635,242,496
-1,277,752,770,560
-2,491,081,031,680
+538,072,055,808
+1,381,001,854,976
+2,620,142,387,200
 ffn and self attention
 
 5. ffn
-147,746,874,982,400
+149,522,795,724,800
 33倍
 
 
