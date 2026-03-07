@@ -1,11 +1,15 @@
 import torch
 import sys
+import os
 from einops import einsum, rearrange
 from jaxtyping import Float, Bool, Int
 from typing import Tuple
 from pathlib import Path
 from collections.abc import Callable, Iterable
+from typing import IO, Any, BinaryIO
 from typing import Optional
+import numpy as np
+import numpy.typing as npt
 import torch
 import math
 
@@ -68,6 +72,50 @@ def gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: flo
 
     for g in grads:
         g *= clipping_ef
+
+def data_loading(
+    dataset: npt.NDArray, batch_size: int, context_length: int, device: str
+) -> tuple[torch.Tensor, torch.Tensor]:
+    max_start = len(dataset) - context_length - 1
+    if max_start <= 0:
+        raise ValueError("数据集长度小于指定的context_length")
+    
+    starts = np.random.randint(0, max_start + 1, size=batch_size)
+
+    x_batch = []
+    y_batch = []
+
+    for s in starts:
+        seq = dataset[s: s + context_length + 1] # 长度 context_length + 1
+        x_batch.append(seq[:-1]) # 往前偏移
+        y_batch.append(seq[1:]) # 往后偏移
+
+    x = torch.tensor(x_batch, device=device)
+    y = torch.tensor(y_batch, device=device)
+
+    return (x, y)
+
+def save_checkpoint(model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    iteration: int,
+    out: str | os.PathLike | BinaryIO | IO[bytes]):
+
+    checkpoint = {
+        "model_state": model.state_dict(),
+        "optimizer_state": optimizer.state_dict(),
+        "iteration": iteration
+    }
+
+    torch.save(checkpoint, out)
+
+def load_checkpoint(src: str | os.PathLike | BinaryIO | IO[bytes],
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer) -> int:
+
+    checkpoint = torch.load(src)
+    model.load_state_dict(checkpoint["model_state"])
+    optimizer.load_state_dict(checkpoint["optimizer_state"])
+    return checkpoint["iteration"]
 
 class SGD(torch.optim.Optimizer):
     def __init__(self, params, lr=1e-3):
@@ -180,4 +228,6 @@ if __name__ == "__main__":
           f"inputs.view(-1, inputs.size(-1)): {inputs.view(-1, inputs.size(-1))}\n"
           f"targets.view(-1): {targets.view(-1)}")
     print(cross_entrophy(inputs.view(-1, inputs.size(-1)), targets.view(-1)))
+
+    
     

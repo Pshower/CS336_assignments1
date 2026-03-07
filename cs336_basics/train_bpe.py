@@ -140,18 +140,18 @@ if __name__ == "__main__":
     vocab_size = 500
     special_tokens = ["<|endoftext|>"]
 
-    # vocab, merges = train_bpe(input_path, vocab_size, special_tokens)
+    vocab, merges = train_bpe(input_path, vocab_size, special_tokens)
 
-    # # 保存测试结果
-    # # 写入词汇表 vocab_test.tsv (格式: id\tbytes_repr)
-    # with open("data/vocab_test.tsv", "w+", encoding="utf-8") as f:
-    #     lines = [f"{idx}\t{token_bytes!r}\n" for idx, token_bytes in vocab.items()]
-    #     f.writelines(lines)
+    # 保存测试结果
+    # 写入词汇表 vocab_test.tsv (格式: id\tbytes_repr)
+    with open("data/vocab_test.tsv", "w+", encoding="utf-8") as f:
+        lines = [f"{idx}\t{token_bytes!r}\n" for idx, token_bytes in vocab.items()]
+        f.writelines(lines)
 
-    # # 写入合并规则 merges_test.txt (格式: bytes_repr1\tbytes_repr2\n)
-    # with open("data/merges_test.txt", "w+", encoding="utf-8") as f:
-    #     lines = [f"{a!r}\t{b!r}\n" for a, b in merges]
-    #     f.writelines(lines)
+    # 写入合并规则 merges_test.txt (格式: bytes_repr1\tbytes_repr2\n)
+    with open("data/merges_test.txt", "w+", encoding="utf-8") as f:
+        lines = [f"{a!r}\t{b!r}\n" for a, b in merges]
+        f.writelines(lines)
 
     input_path = "data/owt_train_test.txt"
 

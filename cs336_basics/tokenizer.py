@@ -1,10 +1,15 @@
 import ast
 import time
+import sys
 from io import BytesIO
 from typing import Iterable
 from multiprocess import Pool
+from pathlib import Path
 
-from pretokenization_example import find_chunk_boundaries
+sys.path.append(str(Path(__file__).parent.resolve()))
+sys.path.append(str(Path(__file__).parent.parent.resolve()))
+
+from cs336_basics.pretokenization_example import find_chunk_boundaries
 from train_bpe import process_chunk, NUM_THREAD
 
 
